@@ -1,0 +1,65 @@
+name: AI PR review
+
+on:
+  workflow_call:
+    inputs:
+      model:
+        description: OpenRouter model id
+        required: false
+        type: string
+        default: x-ai/grok-4.7
+    secrets:
+      OPENROUTER_API_KEY:
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    name: AI PR review
+    if: >-
+      ${{
+        (
+          github.event_name == 'issue_comment'
+          && github.event.issue.pull_request
+        )
+        ||
+        (
+          github.event_name != 'issue_comment'
+          && github.event.pull_request.draft == false
+          && github.event.pull_request.head.repo.full_name == github.repository
+        )
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Resolve reviewer repository
+        id: source
+        env:
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+        run: |
+          ref="${WORKFLOW_REF%@*}"
+          repo="${ref%%/.github/*}"
+          if [ -z "$repo" ] || [ "$repo" = "$ref" ]; then
+            echo "Could not parse reviewer repository from ${WORKFLOW_REF}" >&2
+            exit 1
+          fi
+          echo "repo=${repo}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout reviewer
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.source.outputs.repo }}
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+
+      - name: Review the pull request
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          AI_PR_REVIEW_MODEL: ${{ inputs.model }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: python3 ai_pr_review.py
