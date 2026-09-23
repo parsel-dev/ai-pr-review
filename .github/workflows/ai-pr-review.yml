@@ -40,24 +40,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Resolve reviewer repository
-        id: source
-        env:
-          WORKFLOW_REF: ${{ github.workflow_ref }}
-        run: |
-          ref="${WORKFLOW_REF%@*}"
-          repo="${ref%%/.github/*}"
-          if [ -z "$repo" ] || [ "$repo" = "$ref" ]; then
-            echo "Could not parse reviewer repository from ${WORKFLOW_REF}" >&2
-            exit 1
-          fi
-          echo "repo=${repo}" >> "$GITHUB_OUTPUT"
-
+      # In a reusable workflow, github.workflow_ref and github.workflow_sha
+      # describe the caller's workflow, not this one. job_workflow_sha is the
+      # commit of this file; if GitHub leaves it empty, checkout falls back to
+      # this repository's default branch.
       - name: Checkout reviewer
         uses: actions/checkout@v4
         with:
-          repository: ${{ steps.source.outputs.repo }}
-          ref: ${{ github.workflow_sha }}
+          repository: parsel-dev/ai-pr-review
+          ref: ${{ github.job_workflow_sha }}
           persist-credentials: false
 
       - name: Review the pull request

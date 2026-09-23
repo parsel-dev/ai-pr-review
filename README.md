@@ -36,7 +36,7 @@ jobs:
           && startsWith(github.event.comment.body, '/review')
         )
       }}
-    uses: parsel-dev/ai-pr-review/.github/workflows/ai-pr-review.yml@1.0.0
+    uses: parsel-dev/ai-pr-review/.github/workflows/ai-pr-review.yml@1.0.1
     with:
       omit_prefixes: generated/, vendor/
     secrets:
@@ -60,7 +60,7 @@ El modelo por defecto es `x-ai/grok-4.7`. Para usar otro:
 ```yaml
 jobs:
   review:
-    uses: parsel-dev/ai-pr-review/.github/workflows/ai-pr-review.yml@1.0.0
+    uses: parsel-dev/ai-pr-review/.github/workflows/ai-pr-review.yml@1.0.1
     with:
       model: otro/modelo
     secrets:
