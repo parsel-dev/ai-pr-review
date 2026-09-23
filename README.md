@@ -33,22 +33,19 @@ jobs:
           github.event_name == 'issue_comment'
           && github.event.issue.pull_request
           && github.event.comment.user.type != 'Bot'
-          && (
-            github.event.comment.author_association == 'OWNER'
-            || github.event.comment.author_association == 'MEMBER'
-            || github.event.comment.author_association == 'COLLABORATOR'
-          )
           && startsWith(github.event.comment.body, '/review')
-          && !startsWith(github.event.comment.body, '/reviewer')
-          && !startsWith(github.event.comment.body, '/reviews')
         )
       }}
-    uses: parsel-dev/ai-pr-review/.github/workflows/ai-pr-review.yml@v1
+    uses: parsel-dev/ai-pr-review/.github/workflows/ai-pr-review.yml@1.0.0
+    with:
+      omit_prefixes: generated/, vendor/
     secrets:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 ```
 
-Ese `if` es de cada repositorio. El ejemplo revisa un pull request listo y, si un owner, member o collaborator comenta `/review`, lo vuelve a revisar. Puedes quitar el comentario, cambiar el comando o limitar quién lo dispara. Este repositorio no lee el texto del comentario: si el workflow lo llama, revisa.
+Ese `if` es de cada repositorio. El ejemplo revisa un pull request listo y, si alguien que no es un bot comenta `/review`, lo vuelve a revisar. Puedes quitar el comentario, cambiar el comando o limitar quién lo dispara. Este repositorio no lee el texto del comentario: si el workflow lo llama, revisa.
+
+`omit_prefixes` es opcional. El script lo lee y deja fuera del diff cualquier path que empiece así; el modelo no ve esos archivos ni el valor del input. Varios prefijos van separados por comas (`generated/, vendor/`). Para un directorio, cierra con `/`.
 
 Los permisos del YAML hacen falta para leer el pull request y publicar la revisión. El workflow compartido tampoco revisa borradores ni pull requests cuyo head venga de otro repositorio.
 
@@ -63,7 +60,7 @@ El modelo por defecto es `x-ai/grok-4.7`. Para usar otro:
 ```yaml
 jobs:
   review:
-    uses: parsel-dev/ai-pr-review/.github/workflows/ai-pr-review.yml@v1
+    uses: parsel-dev/ai-pr-review/.github/workflows/ai-pr-review.yml@1.0.0
     with:
       model: otro/modelo
     secrets:
@@ -72,28 +69,11 @@ jobs:
 
 ## Contexto del repositorio
 
-Opcional. En la rama base, `.github/ai-pr-review.md` agrega reglas de ese proyecto al prompt. Si el archivo no existe, la revisión usa solo el prompt genérico.
+Opcional. En la rama base, `.github/ai-pr-review.md` es texto para el modelo: reglas de ese proyecto. Si el archivo no existe, la revisión usa solo el prompt genérico. Se lee de la rama base, no del head, así que un pull request no cambia esas reglas hasta que se mezcla.
+
+Ejemplo de `.github/ai-pr-review.md`:
 
 ```markdown
----
-omit_prefixes: src/staticfiles/, dist/
----
-Cada stage desplegado es una tienda. settings.SHOP es normal.
+Los archivos en `generated/` salen del build.
+Un valor de configuración fijo de este repositorio es intencional.
 ```
-
-`omit_prefixes` son prefijos separados por comas. Un path que empiece así no se manda al modelo. Para un directorio, incluye la barra final (`src/staticfiles/`).
-
-El archivo se lee de la rama base, no del head. Un pull request no puede cambiar las reglas hasta que se mezcla.
-
-## Actualizar todos los repositorios
-
-La referencia `@v1` es una etiqueta móvil. Moverla en este repositorio actualiza a quien la use:
-
-```bash
-git tag -f v1
-git push -f origin v1
-```
-
-`@main` toma cada push a `main` en cuanto ocurre. Un SHA fijo no cambia hasta que cada repositorio actualice su YAML.
-
-Este repositorio tiene que ser público para que los demás puedan usar `uses:`.

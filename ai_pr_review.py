@@ -658,28 +658,8 @@ contents. If the change matches the surrounding module, leave it out.
 """
 
 
-def parse_review_context(text):
-    stripped = (text or "").lstrip("\ufeff").strip()
-    if not stripped.startswith("---"):
-        return [], stripped
-    lines = stripped.splitlines()
-    if lines[0].strip() != "---":
-        return [], stripped
-    closing = None
-    for index, line in enumerate(lines[1:], start=1):
-        if line.strip() == "---":
-            closing = index
-            break
-    if closing is None:
-        return [], stripped
-    prefixes = []
-    for line in lines[1:closing]:
-        key, separator, value = line.partition(":")
-        if not separator or key.strip() != "omit_prefixes":
-            continue
-        prefixes = [item.strip() for item in value.split(",") if item.strip()]
-    body = "\n".join(lines[closing + 1 :]).strip()
-    return prefixes, body
+def parse_omit_prefixes(value):
+    return [item.strip() for item in (value or "").split(",") if item.strip()]
 
 
 def system_prompt(repository_context):
@@ -942,7 +922,8 @@ def review_pull_request(env):
     raw_context = ""
     if base_sha:
         raw_context = fetch_file_text(repository, CONTEXT_PATH, base_sha, token) or ""
-    omit_prefixes, repository_context = parse_review_context(raw_context)
+    repository_context = raw_context.strip()
+    omit_prefixes = parse_omit_prefixes(env.get("AI_PR_REVIEW_OMIT_PREFIXES"))
     try:
         raw_commits = fetch_pull_commits(repository, number, token)
     except RuntimeError as error:

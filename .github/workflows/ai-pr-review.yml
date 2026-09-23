@@ -8,6 +8,11 @@ on:
         required: false
         type: string
         default: x-ai/grok-4.7
+      omit_prefixes:
+        description: Comma-separated path prefixes left out of the diff
+        required: false
+        type: string
+        default: ""
     secrets:
       OPENROUTER_API_KEY:
         required: true
@@ -60,6 +65,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           AI_PR_REVIEW_MODEL: ${{ inputs.model }}
+          AI_PR_REVIEW_OMIT_PREFIXES: ${{ inputs.omit_prefixes }}
           REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
         run: python3 ai_pr_review.py
